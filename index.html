@@ -298,14 +298,15 @@
     <div id="bar"></div>
 
     <!-- ========== 1. 封面 ========== -->
+    <!-- 封面元素直接帶 class="in"：就算 JS 完全沒跑，第一頁也是看得見的 -->
     <section class="slide active cover">
-      <div data-anim style="animation-delay:.02s"><span class="badge">蝦皮分潤 × AI 選品</span></div>
-      <h1 data-anim style="animation-delay:.10s;margin-top:26px;">Shopping<br><span class="grad">Signal</span></h1>
-      <p class="sub" data-anim style="animation-delay:.20s;">
+      <div data-anim class="in" style="animation-delay:.02s"><span class="badge">蝦皮分潤 × AI 選品</span></div>
+      <h1 data-anim class="in" style="animation-delay:.10s;margin-top:26px;">Shopping<br><span class="grad">Signal</span></h1>
+      <p class="sub" data-anim class="in" style="animation-delay:.20s;">
         不要告訴我什麼賣得最好。<br>
         告訴我，<span class="hl">下一個可能會賣爆的是什麼</span>。
       </p>
-      <div class="foot" data-anim style="animation-delay:.30s">
+      <div class="foot" data-anim class="in" style="animation-delay:.30s">
         <span>市場資料 → 趨勢分析 → AI 選品</span>
         <span>·</span>
         <span>在商品爆起來之前，就先發現它</span>
@@ -670,23 +671,24 @@
     el.style.transitionDelay = d;
   });
 
-  /* ---- 進場：用 JS 加 class（可被 900ms 保險計時器強制補上） ---- */
-  function reveal(slide){
+  /* ---- 進場：用 JS 加 class（可被 900ms 保險計時器強制補上）
+         instant=true 用於首次載入：直接顯示，不做動畫、不經過 rAF ---- */
+  function reveal(slide, instant){
     const els = Array.from(slide.querySelectorAll('[data-anim]'));
-    els.forEach(el => el.classList.remove('in'));
     if (!els.length) return;
     const show = () => els.forEach(el => el.classList.add('in'));
+    if (instant){ show(); return; }          // 首次載入：立即顯示，零風險
+    els.forEach(el => el.classList.remove('in'));
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(show));
     else setTimeout(show, 30);
-    // 保險：不論動畫/transition 是否被系統停用，時間到一定顯示
-    setTimeout(show, 900);
+    setTimeout(show, 900);                   // 保險：動畫被系統停用也一定看得到
   }
 
   /* ---- 頁碼 & 進度條 ---- */
   function pad2(n){ return n < 10 ? '0' + n : '' + n; }
-  function render(){
+  function render(instant){
     slides.forEach((s, k) => s.classList.toggle('active', k === i));
-    reveal(slides[i]);
+    reveal(slides[i], instant);
     counter.textContent = pad2(i+1) + ' / ' + pad2(slides.length);
     bar.style.width = ((i)/(slides.length-1)*100) + '%';
   }
@@ -740,7 +742,7 @@
   /* ---- 網址帶 #5 可直接跳到第 5 頁 ---- */
   const h = parseInt((location.hash || '').replace('#',''), 10);
   if (h >= 1 && h <= slides.length) i = h - 1;
-  render();
+  render(true);   // 首次載入直接顯示，不靠動畫
 })();
 </script>
 </body>
