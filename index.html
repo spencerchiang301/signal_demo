@@ -45,16 +45,29 @@
     -webkit-font-smoothing:antialiased;
   }
 
-  /* ================= 舞台縮放 ================= */
+  /* ================= 舞台縮放 =================
+     縮放值放在 CSS 變數 --s：JS 可用時會覆寫它；
+     JS 沒跑或量到異常值時，下面的 @media 階梯仍保證畫面看得見。 */
   #viewport{position:fixed;inset:0;display:grid;place-items:center;}
   #stage{
+    --s:.3;
     position:relative;width:1280px;height:720px;
     transform-origin:center center;
+    transform:scale(var(--s));
     background:linear-gradient(160deg,#0b1120 0%,#0a0e1b 55%,#0d0a14 100%);
     border-radius:20px;
     overflow:hidden;
     box-shadow:0 40px 120px -30px rgba(0,0,0,.9), 0 0 0 1px rgba(255,255,255,.06);
   }
+  /* 無 JS 時的備援縮放（僅依視窗寬度/高度粗略取值） */
+  @media (min-width:400px){ #stage{--s:.3;} }
+  @media (min-width:520px){ #stage{--s:.39;} }
+  @media (min-width:700px){ #stage{--s:.52;} }
+  @media (min-width:900px){ #stage{--s:.67;} }
+  @media (min-width:1100px){ #stage{--s:.83;} }
+  @media (min-width:1320px){ #stage{--s:1;} }
+  @media (max-height:520px){ #stage{--s:.47;} }
+  @media (max-height:430px){ #stage{--s:.37;} }
 
   /* 背景裝飾 */
   #stage::before{
@@ -62,12 +75,13 @@
     background-image:linear-gradient(rgba(255,255,255,.028) 1px,transparent 1px),
                      linear-gradient(90deg,rgba(255,255,255,.028) 1px,transparent 1px);
     background-size:64px 64px;
-    mask-image:radial-gradient(120% 100% at 50% 0%,#000 30%,transparent 85%);
-    -webkit-mask-image:radial-gradient(120% 100% at 50% 0%,#000 30%,transparent 85%);
   }
-  .glow{position:absolute;border-radius:50%;filter:blur(90px);pointer-events:none;opacity:.5;}
-  .glow.a{width:520px;height:520px;left:-160px;top:-180px;background:#1b3a7a;}
-  .glow.b{width:460px;height:460px;right:-140px;bottom:-180px;background:#5c1f3a;}
+  /* 用 radial-gradient 取代 filter:blur()：部分手機 GPU 對大型 blur 會渲染成黑塊 */
+  .glow{position:absolute;pointer-events:none;border-radius:50%;opacity:.55;}
+  .glow.a{width:900px;height:900px;left:-330px;top:-360px;
+    background:radial-gradient(circle at 50% 50%,rgba(27,58,122,.95) 0%,rgba(27,58,122,.45) 38%,transparent 70%);}
+  .glow.b{width:820px;height:820px;right:-300px;bottom:-360px;
+    background:radial-gradient(circle at 50% 50%,rgba(92,31,58,.9) 0%,rgba(92,31,58,.4) 40%,transparent 72%);}
 
   /* ================= 投影片 =================
      重要：內容一律「預設可見」，動畫只是加分。
@@ -220,6 +234,37 @@
     background:linear-gradient(100deg,#ffffff,#93a4cf);-webkit-background-clip:text;background-clip:text;color:transparent;}
   .bignum .u{font-size:24px;color:var(--tx-2);font-weight:600;}
 
+  /* ================= 安全模式 / 版本標記 / 診斷面板 ================= */
+  /* 安全模式：只顯示目前這一頁，並強制可見（給縮放或動畫異常的手機用） */
+  .safe .slide{opacity:0;visibility:hidden;transform:none;}
+  .safe .slide.active{opacity:1 !important;visibility:visible !important;transform:none !important;}
+  .safe .slide.active [data-anim]{opacity:1 !important;transform:none !important;transition:none !important;}
+
+  /* 純瀏覽模式（?plain=1）：不縮放、可捲動、每頁都看得見 */
+  .plain #viewport{position:static;display:block;}
+  .plain #stage{--s:1 !important;width:1280px;height:auto;overflow:visible;border-radius:0;margin:0 auto;transform:none !important;}
+  .plain .slide{position:relative;inset:auto;opacity:1 !important;visibility:visible !important;transform:none !important;height:720px;}
+  .plain [data-anim]{opacity:1 !important;transform:none !important;}
+  .plain .glow,.plain #stage::before{display:none;}
+  .plain body{overflow:auto;}
+  .plain .slide{border-bottom:1px solid rgba(255,255,255,.12);}
+
+  /* 版本標記：一定要看得到，用來判斷手機載到的是哪一版 */
+  #ver{
+    position:fixed;right:10px;bottom:10px;z-index:9999;
+    font:600 12px/1.4 -apple-system,"PingFang TC","Noto Sans TC",sans-serif;
+    background:#ee4d2d;color:#1a0d07;padding:5px 11px;border-radius:8px;letter-spacing:.02em;
+    box-shadow:0 2px 10px rgba(0,0,0,.55);pointer-events:none;
+  }
+  /* 診斷面板 */
+  #diag{
+    position:fixed;left:8px;top:8px;right:8px;z-index:9998;display:none;
+    font:12px/1.55 ui-monospace,Menlo,Consolas,monospace;
+    background:rgba(0,0,0,.9);color:#9fe0ff;border:1px solid #2b4a63;border-radius:10px;
+    padding:10px 12px;white-space:pre-wrap;word-break:break-all;max-height:72vh;overflow:auto;
+  }
+  #diag.on{display:block;}
+
   /* ================= 頁尾 / 進度 ================= */
   #bar{position:absolute;left:0;top:0;height:3px;background:linear-gradient(90deg,var(--orange),var(--violet),var(--cyan));width:0;transition:width .4s ease;z-index:30;}
   .hud{position:absolute;left:88px;right:88px;bottom:32px;display:flex;justify-content:space-between;
@@ -287,7 +332,7 @@
     }
     [data-anim]{opacity:1 !important;transform:none !important;animation:none !important;transition:none !important;}
     .tl-now .dot-ring{display:none;}
-    #nav,#hint,#bar,#rotate,.hud{display:none;}
+    #nav,#hint,#bar,#rotate,.hud,#ver,#diag{display:none;}
   }
 </style>
 </head>
@@ -629,6 +674,8 @@
 </div>
 <div id="hint">← → 或空白鍵翻頁 · F 全螢幕 · P 列印 / 匯出 PDF · 手機可左右滑動或點畫面兩側</div>
 <div id="rotate">↻ 建議轉成橫向，或加「主畫面」後全螢幕簡報</div>
+<div id="ver">v5 · <span id="verstate">載入中…</span></div>
+<div id="diag"></div>
 
 <script>
 (function(){
@@ -643,26 +690,87 @@
   function fallback(){
     root.classList.remove('js');
     slides.forEach(s => s.classList.add('active'));
+    showDiag('JS 發生錯誤，已切換為靜態顯示');
   }
   addEventListener('error', fallback);
+
+  /* ---- 診斷面板：手機上萬一還是怪怪的，這段文字會直接說明原因 ---- */
+  const diagEl = document.getElementById('diag');
+  const verState = document.getElementById('verstate');
+  const VERSION = 'v5';
+  let diagReason = '';
+  /* matchMedia 不存在的舊 webview 也不能讓程式掛掉 */
+  function mq(q){
+    try { return !!(window.matchMedia && window.matchMedia(q).matches); } catch(_) { return false; }
+  }
+  function showDiag(reason){
+    if (reason) diagReason = reason;
+    if (diagEl) diagEl.classList.add('on');
+    refreshDiag();
+  }
+  function refreshDiag(){
+    if (!diagEl || !diagEl.classList.contains('on')) return;
+    const vv = window.visualViewport;
+    const r = stage.getBoundingClientRect();
+    diagEl.textContent = [
+      VERSION + ' 診斷資訊' + (diagReason ? '　⚠ ' + diagReason : ''),
+      '網址      ' + location.href,
+      '視窗      innerWidth=' + window.innerWidth + ' innerHeight=' + window.innerHeight,
+      'visualViewport ' + (vv ? vv.width.toFixed(1) + '×' + vv.height.toFixed(1) + ' scale=' + vv.scale.toFixed(2) : '不支援'),
+      '螢幕      ' + screen.width + '×' + screen.height + ' dpr=' + window.devicePixelRatio,
+      '方向      ' + (mq('(orientation:portrait)') ? '直向' : '橫向'),
+      '舞台 rect ' + Math.round(r.width) + '×' + Math.round(r.height) + ' @ (' + Math.round(r.left) + ',' + Math.round(r.top) + ')',
+      '--s       ' + getComputedStyle(stage).getPropertyValue('--s').trim(),
+      'js 旗標   ' + root.classList.contains('js') + ' / safe=' + root.classList.contains('safe'),
+      '目前頁面  ' + (i + 1) + ' / ' + slides.length,
+      '減少動態  ' + mq('(prefers-reduced-motion: reduce)'),
+      'UA        ' + navigator.userAgent.slice(0, 120)
+    ].join('\n');
+  }
 
   /* ---- 縮放舞台：維持 16:9，塞滿視窗（含手機網址列伸縮） ---- */
   function viewSize(){
     const vv = window.visualViewport;
-    return { w: (vv && vv.width) || innerWidth || 1280,
-             h: (vv && vv.height) || innerHeight || 720 };
+    return { w: (vv && vv.width) || window.innerWidth || 0,
+             h: (vv && vv.height) || window.innerHeight || 0 };
   }
-  function fit(){
+  function applyScale(){
     const { w, h } = viewSize();
+    if (!(w >= 280 && h >= 280)) return false;        // 量到不合理尺寸 → 保留 CSS 備援縮放
     const pad = 20;
     const s = Math.min((w - pad*2) / 1280, (h - pad*2) / 720);
-    stage.style.transform = 'scale(' + (isFinite(s) && s > 0 ? Math.max(0.08, Math.min(s, 2.5)) : 1) + ')';
+    if (!isFinite(s) || s <= 0) return false;
+    stage.style.setProperty('--s', String(Math.max(0.12, Math.min(s, 2.5))));
+    return true;
   }
+  /* 量完之後自我檢查：放大縮小後如果畫面小到看不見或跑到畫面外，就切安全模式 */
+  function checkHealth(){
+    if (root.classList.contains('plain')) return;
+    const r = stage.getBoundingClientRect();
+    const vw = window.innerWidth, vh = window.innerHeight;
+    if (!(vw > 0 && vh > 0)) return;
+    const tooSmall  = !(r.width > 140 && r.height > 80);
+    const offScreen = r.right < 60 || r.bottom < 60 || r.left > vw - 60 || r.top > vh - 60;
+    if (tooSmall || offScreen){
+      safeMode('縮放後畫面異常（舞台 ' + Math.round(r.width) + '×' + Math.round(r.height) + '）');
+    }
+  }
+  function safeMode(reason){
+    if (root.classList.contains('safe')) return;
+    root.classList.add('safe');
+    stage.style.removeProperty('--s');               // 交還 CSS 備援縮放
+    window.dispatchEvent(new Event('resize'));
+    if (verState) verState.textContent = '安全模式';
+    showDiag(reason);
+  }
+  function fit(){ applyScale(); checkHealth(); refreshDiag(); }
   addEventListener('resize', fit);
   addEventListener('orientationchange', () => setTimeout(fit, 120));
   addEventListener('pageshow', fit);
   if (window.visualViewport) visualViewport.addEventListener('resize', fit);
   fit();
+  setTimeout(fit, 300);     // 有些手機會在首次布局後才給出正確尺寸
+  setTimeout(fit, 1200);
 
   /* 把原本寫在 HTML 上的 animation-delay 轉成 transition-delay（不再依賴 CSS animation） */
   document.querySelectorAll('[data-anim]').forEach(el => {
@@ -739,10 +847,17 @@
     else if (x < r.width * 0.38) prev();
   });
 
+  /* ---- 模式切換：?plain=1 純瀏覽（不縮放、可捲動）、?debug=1 開診斷面板 ---- */
+  const qs = location.search || '';
+  if (/[?&]plain/.test(qs)){ root.classList.add('plain'); root.classList.remove('js'); }
+  if (/[?&]debug/.test(qs)) showDiag('手動開啟診斷（?debug=1）');
+
   /* ---- 網址帶 #5 可直接跳到第 5 頁 ---- */
   const h = parseInt((location.hash || '').replace('#',''), 10);
   if (h >= 1 && h <= slides.length) i = h - 1;
   render(true);   // 首次載入直接顯示，不靠動畫
+  if (verState && !root.classList.contains('safe'))          // 安全模式已經改過標記，不要覆蓋
+    verState.textContent = root.classList.contains('plain') ? '純瀏覽' : '正常';
 })();
 </script>
 </body>
