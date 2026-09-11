@@ -249,6 +249,60 @@
   .plain body{overflow:auto;}
   .plain .slide{border-bottom:1px solid rgba(255,255,255,.12);}
 
+  /* ================= 卡片模式（手機／相容性最強） =================
+     完全不用 transform / position:fixed 縮放 / vh：
+     每一頁就是一張固定 1280×720 的卡片，用 zoom 縮到螢幕寬，垂直捲動瀏覽。
+     zoom 對 Chromium（Android WebView、Chrome）與 Safari 都支援，
+     是行動瀏覽器最不容易畫不出來的做法。 */
+  .card,  .card body{overflow:auto;}
+  .card #viewport{position:static;display:grid;place-items:start center;}
+  .card #stage{
+    --s:1 !important;transform:none !important;
+    width:1280px;height:auto;overflow:visible;border-radius:0;box-shadow:none;margin:0 auto;
+  }
+  .card .slide{
+    position:relative;inset:auto;display:flex;
+    width:1280px;height:720px;margin:0 auto;
+    opacity:1 !important;visibility:visible !important;transform:none !important;
+    border-bottom:1px solid rgba(255,255,255,.14);
+  }
+  .card [data-anim]{opacity:1 !important;transform:none !important;transition:none !important;}
+  .card .slide.active{outline:0;}
+  .card .glow{display:none;}
+  .card #stage::before{display:none;}
+  .card #bar{display:none;}
+  .card .hud{position:static;display:flex;left:auto;right:auto;width:1280px;margin:0 auto;
+    padding:10px 88px;box-sizing:border-box;background:#0a0e1b;}
+  .card #nav{position:fixed;right:12px;bottom:12px;}
+  .card #hint{display:block;position:fixed;left:auto;right:auto;bottom:10px;transform:none;
+    background:rgba(10,14,27,.8);border-radius:8px;}
+  .card #rotate{display:none !important;}
+
+  /* 用 zoom 縮放卡片（會影響版面高度，所以捲動長度自然正確） */
+  .card .slide{zoom:.30;}
+  @media (min-width:520px){ .card .slide{zoom:.39;} }
+  @media (min-width:700px){ .card .slide{zoom:.53;} }
+  @media (min-width:900px){ .card .slide{zoom:.68;} }
+  @media (min-width:1100px){ .card .slide{zoom:.84;} }
+
+  /* 沒有 JS 時，直向手機也直接走卡片模式（純 CSS，不靠任何測量） */
+  @media (orientation:portrait) and (max-width:900px){
+    body{overflow:auto;}
+    #viewport{position:static;display:grid;place-items:start center;}
+    #stage{--s:1 !important;transform:none !important;width:1280px;height:auto;overflow:visible;border-radius:0;box-shadow:none;margin:0 auto;}
+    .slide{position:relative;inset:auto;width:1280px;height:720px;margin:0 auto;
+      opacity:1 !important;visibility:visible !important;transform:none !important;
+      border-bottom:1px solid rgba(255,255,255,.14);}
+    [data-anim]{opacity:1 !important;transform:none !important;}
+    .glow,#stage::before,#bar,#rotate{display:none;}
+    .slide{zoom:.30;}
+    .hud{position:static;width:1280px;margin:0 auto;padding:10px 88px;box-sizing:border-box;background:#0a0e1b;}
+  }
+  @media (orientation:portrait) and (max-width:520px){ .slide{zoom:.30;} }
+  @media (orientation:portrait) and (min-width:520px){ .slide{zoom:.39;} }
+  @media (orientation:portrait) and (min-width:700px){ .slide{zoom:.53;} }
+  @media (orientation:portrait) and (min-width:900px){ .slide{zoom:.68;} }
+
   /* 版本標記：一定要看得到，用來判斷手機載到的是哪一版 */
   #ver{
     position:fixed;right:10px;bottom:10px;z-index:9999;
@@ -697,7 +751,7 @@
   /* ---- 診斷面板：手機上萬一還是怪怪的，這段文字會直接說明原因 ---- */
   const diagEl = document.getElementById('diag');
   const verState = document.getElementById('verstate');
-  const VERSION = 'v5';
+  const VERSION = 'v6';
   let diagReason = '';
   /* matchMedia 不存在的舊 webview 也不能讓程式掛掉 */
   function mq(q){
@@ -721,11 +775,24 @@
       '方向      ' + (mq('(orientation:portrait)') ? '直向' : '橫向'),
       '舞台 rect ' + Math.round(r.width) + '×' + Math.round(r.height) + ' @ (' + Math.round(r.left) + ',' + Math.round(r.top) + ')',
       '--s       ' + getComputedStyle(stage).getPropertyValue('--s').trim(),
-      'js 旗標   ' + root.classList.contains('js') + ' / safe=' + root.classList.contains('safe'),
+      'js 旗標   ' + root.classList.contains('js') + ' / safe=' + root.classList.contains('safe') + ' / card=' + root.classList.contains('card'),
+      '版面模式  ' + (root.classList.contains('card') ? '卡片模式（可捲動）' : '畫布模式（縮放 16:9）'),
       '目前頁面  ' + (i + 1) + ' / ' + slides.length,
       '減少動態  ' + mq('(prefers-reduced-motion: reduce)'),
       'UA        ' + navigator.userAgent.slice(0, 120)
     ].join('\n');
+  }
+
+  /* ---- 版面模式：直向手機直接用「卡片模式」，不必量尺寸、不靠 transform ---- */
+  const forced = { card: /[?&]card\b/.test(location.search || ''), stage: /[?&]stage\b/.test(location.search || '') };
+  function inCard(){ return root.classList.contains('card'); }
+  function applyLayoutMode(){
+    if (forced.stage) { root.classList.remove('card'); return; }
+    if (forced.card)   { root.classList.add('card'); return; }
+    const portrait = mq('(orientation:portrait)');
+    const narrow = (window.innerWidth || 0) <= 900;
+    // 直向窄螢幕 → 卡片模式（手機最穩）；其餘維持畫布模式
+    root.classList.toggle('card', portrait && narrow);
   }
 
   /* ---- 縮放舞台：維持 16:9，塞滿視窗（含手機網址列伸縮） ---- */
@@ -735,6 +802,7 @@
              h: (vv && vv.height) || window.innerHeight || 0 };
   }
   function applyScale(){
+    if (inCard()){ stage.style.removeProperty('--s'); return true; }   // 卡片模式不需要縮放
     const { w, h } = viewSize();
     if (!(w >= 280 && h >= 280)) return false;        // 量到不合理尺寸 → 保留 CSS 備援縮放
     const pad = 20;
@@ -743,27 +811,38 @@
     stage.style.setProperty('--s', String(Math.max(0.12, Math.min(s, 2.5))));
     return true;
   }
-  /* 量完之後自我檢查：放大縮小後如果畫面小到看不見或跑到畫面外，就切安全模式 */
+  /* 量完之後自我檢查：縮放後如果畫面小到看不見或跑到畫面外，就改用卡片模式 */
   function checkHealth(){
-    if (root.classList.contains('plain')) return;
+    if (root.classList.contains('plain') || inCard()) return;
     const r = stage.getBoundingClientRect();
     const vw = window.innerWidth, vh = window.innerHeight;
     if (!(vw > 0 && vh > 0)) return;
     const tooSmall  = !(r.width > 140 && r.height > 80);
     const offScreen = r.right < 60 || r.bottom < 60 || r.left > vw - 60 || r.top > vh - 60;
     if (tooSmall || offScreen){
-      safeMode('縮放後畫面異常（舞台 ' + Math.round(r.width) + '×' + Math.round(r.height) + '）');
+      safeMode('畫布模式異常（舞台 ' + Math.round(r.width) + '×' + Math.round(r.height) +
+               '，視窗 ' + vw + '×' + vh + '）→ 已改為卡片模式');
     }
   }
   function safeMode(reason){
-    if (root.classList.contains('safe')) return;
-    root.classList.add('safe');
-    stage.style.removeProperty('--s');               // 交還 CSS 備援縮放
-    window.dispatchEvent(new Event('resize'));
-    if (verState) verState.textContent = '安全模式';
+    const first = !root.classList.contains('safe');
+    root.classList.add('safe', 'card');               // 安全模式＝改用卡片模式，內容一定看得到
+    stage.style.removeProperty('--s');
+    if (verState) verState.textContent = '卡片模式';
+    if (first){
+      // 重新量一次並把目前這頁帶到畫面上
+      setTimeout(() => { try { slides[i].scrollIntoView({ block:'start' }); } catch(_){} }, 60);
+    }
     showDiag(reason);
   }
-  function fit(){ applyScale(); checkHealth(); refreshDiag(); }
+  function fit(){
+    applyLayoutMode();
+    applyScale();
+    checkHealth();
+    refreshDiag();
+    if (verState && !root.classList.contains('safe') && !root.classList.contains('plain'))
+      verState.textContent = inCard() ? '卡片模式' : '正常';
+  }
   addEventListener('resize', fit);
   addEventListener('orientationchange', () => setTimeout(fit, 120));
   addEventListener('pageshow', fit);
@@ -804,6 +883,9 @@
     const t = Math.max(0, Math.min(slides.length-1, n));
     if (t === i) return;
     i = t; render();
+    if (inCard()){                                   // 卡片模式：捲動到那一頁
+      try { slides[i].scrollIntoView({ behavior:'smooth', block:'start' }); } catch(_){ }
+    }
     try { history.replaceState(null, '', '#' + (i+1)); } catch(_){}
   }
   const next = () => go(i+1), prev = () => go(i-1);
@@ -856,8 +938,10 @@
   const h = parseInt((location.hash || '').replace('#',''), 10);
   if (h >= 1 && h <= slides.length) i = h - 1;
   render(true);   // 首次載入直接顯示，不靠動畫
-  if (verState && !root.classList.contains('safe'))          // 安全模式已經改過標記，不要覆蓋
-    verState.textContent = root.classList.contains('plain') ? '純瀏覽' : '正常';
+  if (verState && root.classList.contains('plain')) verState.textContent = '純瀏覽';
+  if (root.classList.contains('card')){              // 直向手機：開場直接停在第一頁
+    try { slides[i].scrollIntoView({ block:'start' }); } catch(_){ }
+  }
 })();
 </script>
 </body>
