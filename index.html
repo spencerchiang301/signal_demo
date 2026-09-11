@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shopping Signal — 在商品爆起來之前，就先發現它</title>
+<style>
+  :root{
+    --ink:#080b14;
+    --ink-2:#0f1424;
+    --line:rgba(255,255,255,.10);
+    --line-2:rgba(255,255,255,.18);
+    --tx:#eef2ff;
+    --tx-2:#9aa6c4;
+    --tx-3:#66718d;
+    --orange:#ee4d2d;
+    --orange-2:#ff7a45;
+    --cyan:#4cc9f0;
+    --green:#3ddc97;
+    --violet:#8b7bff;
+    --gold:#ffc247;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    background:radial-gradient(1200px 700px at 15% -10%, #16203c 0%, transparent 60%),
+               radial-gradient(1000px 600px at 90% 110%, #2a1526 0%, transparent 55%),
+               var(--ink);
+    color:var(--tx);
+    font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei","Segoe UI",sans-serif;
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ================= 舞台縮放 ================= */
+  #viewport{position:fixed;inset:0;display:grid;place-items:center;}
+  #stage{
+    position:relative;width:1280px;height:720px;
+    transform-origin:center center;
+    background:linear-gradient(160deg,#0b1120 0%,#0a0e1b 55%,#0d0a14 100%);
+    border-radius:20px;
+    overflow:hidden;
+    box-shadow:0 40px 120px -30px rgba(0,0,0,.9), 0 0 0 1px rgba(255,255,255,.06);
+  }
+
+  /* 背景裝飾 */
+  #stage::before{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background-image:linear-gradient(rgba(255,255,255,.028) 1px,transparent 1px),
+                     linear-gradient(90deg,rgba(255,255,255,.028) 1px,transparent 1px);
+    background-size:64px 64px;
+    mask-image:radial-gradient(120% 100% at 50% 0%,#000 30%,transparent 85%);
+    -webkit-mask-image:radial-gradient(120% 100% at 50% 0%,#000 30%,transparent 85%);
+  }
+  .glow{position:absolute;border-radius:50%;filter:blur(90px);pointer-events:none;opacity:.5;}
+  .glow.a{width:520px;height:520px;left:-160px;top:-180px;background:#1b3a7a;}
+  .glow.b{width:460px;height:460px;right:-140px;bottom:-180px;background:#5c1f3a;}
+
+  /* ================= 投影片 ================= */
+  .slide{
+    position:absolute;inset:0;padding:74px 88px 84px;
+    display:flex;flex-direction:column;justify-content:center;
+    opacity:0;visibility:hidden;
+    transform:translateY(24px) scale(.995);
+    transition:opacity .45s ease, transform .6s cubic-bezier(.2,.8,.2,1), visibility .45s;
+  }
+  .slide.active{opacity:1;visibility:visible;transform:none;}
+  .slide.active [data-anim]{animation:rise .62s cubic-bezier(.2,.8,.2,1) both;}
+  @keyframes rise{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:none;}}
+  [data-anim]{opacity:0;}
+
+  /* 文字元件 */
+  .kicker{
+    display:inline-flex;align-items:center;gap:10px;
+    font-size:15px;letter-spacing:.22em;color:var(--cyan);
+    text-transform:uppercase;font-weight:600;margin-bottom:22px;
+  }
+  .kicker::before{content:"";width:26px;height:2px;background:var(--cyan);border-radius:2px;}
+  h1{font-size:74px;line-height:1.1;letter-spacing:-.02em;font-weight:800;}
+  h2{font-size:50px;line-height:1.2;letter-spacing:-.01em;font-weight:800;margin-bottom:18px;}
+  h3{font-size:24px;font-weight:700;line-height:1.4;}
+  p{font-size:22px;line-height:1.75;color:var(--tx-2);}
+  .lead{font-size:26px;color:#cdd6f0;line-height:1.7;}
+  .hl{color:var(--tx);font-weight:700;}
+  .o{color:var(--orange-2);}
+  .c{color:var(--cyan);}
+  .g{color:var(--green);}
+  .grad{background:linear-gradient(100deg,#ff8a4c,#ee4d2d 45%,#ff5c8a);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .grad2{background:linear-gradient(100deg,#7ee0ff,#8b7bff);-webkit-background-clip:text;background-clip:text;color:transparent;}
+
+  /* ================= 封面 ================= */
+  .cover{align-items:flex-start;}
+  .cover h1{font-size:84px;}
+  .cover .sub{margin-top:26px;font-size:27px;color:#c3cdea;line-height:1.6;max-width:900px;}
+  .badge{
+    display:inline-block;padding:9px 18px;border-radius:999px;font-size:15px;font-weight:700;
+    border:1px solid rgba(238,77,45,.5);background:rgba(238,77,45,.12);color:#ff9d7a;letter-spacing:.04em;
+  }
+  .cover .foot{margin-top:52px;display:flex;gap:34px;color:var(--tx-3);font-size:17px;letter-spacing:.05em;}
+
+  /* ================= 分潤四步 ================= */
+  .flow{display:flex;align-items:stretch;gap:0;margin-top:14px;}
+  .step{
+    flex:1;position:relative;padding:30px 24px;border-radius:18px;
+    background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.015));
+    border:1px solid var(--line);
+  }
+  .step .n{font-size:14px;font-weight:700;color:var(--tx-3);letter-spacing:.2em;margin-bottom:12px;}
+  .step .t{font-size:25px;font-weight:800;margin-bottom:8px;}
+  .step .d{font-size:16px;color:var(--tx-2);line-height:1.6;}
+  .step.pay{background:linear-gradient(180deg,rgba(238,77,45,.22),rgba(238,77,45,.06));border-color:rgba(238,77,45,.45);}
+  .arrow{display:grid;place-items:center;width:52px;color:var(--tx-3);font-size:24px;flex:0 0 52px;}
+
+  /* ================= 卡片格 ================= */
+  .grid{display:grid;gap:18px;margin-top:6px;}
+  .g2{grid-template-columns:1fr 1fr;}
+  .g3{grid-template-columns:repeat(3,1fr);}
+  .g4{grid-template-columns:repeat(4,1fr);}
+  .card{
+    padding:26px 26px;border-radius:18px;border:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.012));
+  }
+  .card .ico{font-size:26px;margin-bottom:14px;display:block;}
+  .card h3{margin-bottom:8px;font-size:22px;}
+  .card p{font-size:16.5px;line-height:1.65;}
+  .card.no .t{font-size:24px;font-weight:800;color:#ffb4a2;margin-bottom:8px;}
+  .card.no p{font-size:16px;}
+
+  .vs{display:grid;grid-template-columns:1fr 74px 1fr;align-items:center;gap:0;}
+  .colbox{padding:28px;border-radius:18px;border:1px solid var(--line);background:rgba(255,255,255,.03);}
+  .colbox.win{border-color:rgba(61,220,151,.4);background:linear-gradient(180deg,rgba(61,220,151,.12),rgba(61,220,151,.02));}
+  .colbox h3{margin-bottom:16px;font-size:19px;letter-spacing:.06em;color:var(--tx-2);text-transform:uppercase;}
+  .colbox.win h3{color:var(--green);}
+  .chain{display:flex;flex-wrap:wrap;gap:10px;}
+  .chip{padding:8px 14px;border-radius:10px;font-size:16px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:#d6def5;}
+  .chip.dim{color:var(--tx-3);background:transparent;border-style:dashed;}
+  .chip.hot{background:rgba(238,77,45,.16);border-color:rgba(238,77,45,.45);color:#ffab8f;}
+  .chip.ok{background:rgba(61,220,151,.14);border-color:rgba(61,220,151,.4);color:#8ff0c6;}
+
+  /* ================= 訊號卡 ================= */
+  .signal{
+    margin-top:10px;display:grid;grid-template-columns:1.05fr 1fr;gap:22px;
+  }
+  .sig-left{
+    padding:30px 32px;border-radius:20px;border:1px solid rgba(238,77,45,.35);
+    background:linear-gradient(160deg,rgba(238,77,45,.16),rgba(255,255,255,.02));
+  }
+  .sig-left .tag{font-size:14px;letter-spacing:.2em;color:#ff9d7a;font-weight:700;margin-bottom:14px;}
+  .sig-left .prod{font-size:38px;font-weight:800;margin-bottom:6px;}
+  .sig-left .meta{font-size:17px;color:var(--tx-2);}
+  .trend{margin-top:24px;display:flex;align-items:flex-end;gap:12px;}
+  .trend .big{font-size:56px;font-weight:800;line-height:1;color:#ff8a5c;}
+  .trend .unit{font-size:16px;color:var(--tx-2);padding-bottom:8px;line-height:1.4;}
+  .sig-right{display:grid;gap:12px;}
+  .sig-row{
+    display:flex;align-items:center;gap:16px;padding:16px 20px;border-radius:14px;
+    border:1px solid var(--line);background:rgba(255,255,255,.035);
+  }
+  .sig-row .em{font-size:22px;width:30px;text-align:center;}
+  .sig-row .k{font-size:17px;color:var(--tx);flex:1;font-weight:600;}
+  .sig-row .v{font-size:15.5px;font-weight:700;padding:5px 12px;border-radius:8px;white-space:nowrap;}
+  .v.up{background:rgba(238,77,45,.18);color:#ff9d7a;}
+  .v.good{background:rgba(61,220,151,.16);color:#8ff0c6;}
+  .v.low{background:rgba(76,201,240,.15);color:#9fe4ff;}
+  .v.fit{background:rgba(255,194,71,.16);color:#ffd98a;}
+  .spark{margin-top:6px;}
+
+  /* ================= 大標語 ================= */
+  .statement{align-items:flex-start;justify-content:center;}
+  .statement .q{font-size:60px;line-height:1.28;font-weight:800;letter-spacing:-.02em;}
+  .statement .q .keep{color:var(--tx-3);font-weight:600;display:block;font-size:44px;margin-bottom:10px;}
+  .rule{width:96px;height:6px;border-radius:6px;background:linear-gradient(90deg,var(--orange),var(--violet));margin:34px 0 0;}
+
+  /* 時間軸 */
+  .timeline{margin-top:18px;position:relative;height:300px;}
+  .tl-axis{position:absolute;left:0;right:0;bottom:44px;height:1px;background:var(--line-2);}
+  .tl-mark{position:absolute;bottom:0;transform:translateX(-50%);text-align:center;width:200px;}
+  .tl-dot{width:14px;height:14px;border-radius:50%;margin:0 auto 26px;position:relative;top:-7px;}
+  .tl-mark .lbl{font-size:16px;font-weight:700;color:#d6def5;margin-bottom:6px;}
+  .tl-mark .sub{font-size:13.5px;color:var(--tx-3);line-height:1.5;}
+  .tl-now .lbl{color:var(--green);}
+  .tl-now .dot-ring{position:absolute;left:50%;transform:translateX(-50%);bottom:37px;width:38px;height:38px;border-radius:50%;border:2px solid rgba(61,220,151,.5);animation:pulse 2.2s infinite;}
+  @keyframes pulse{0%{transform:translateX(-50%) scale(.7);opacity:.9}70%{transform:translateX(-50%) scale(1.5);opacity:0}100%{opacity:0}}
+
+  /* 數字大視覺 */
+  .bignum{display:flex;align-items:baseline;gap:18px;margin:6px 0 10px;}
+  .bignum .n{font-size:110px;font-weight:800;line-height:.95;letter-spacing:-.03em;
+    background:linear-gradient(100deg,#ffffff,#93a4cf);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .bignum .u{font-size:24px;color:var(--tx-2);font-weight:600;}
+
+  /* ================= 頁尾 / 進度 ================= */
+  #bar{position:absolute;left:0;top:0;height:3px;background:linear-gradient(90deg,var(--orange),var(--violet),var(--cyan));width:0;transition:width .4s ease;z-index:30;}
+  .hud{position:absolute;left:88px;right:88px;bottom:32px;display:flex;justify-content:space-between;
+       align-items:center;font-size:14px;color:var(--tx-3);letter-spacing:.12em;z-index:20;}
+  .hud .brand{display:flex;align-items:center;gap:10px;}
+  .hud .dot{width:7px;height:7px;border-radius:50%;background:var(--orange);box-shadow:0 0 12px var(--orange);}
+  #nav{position:absolute;right:26px;bottom:24px;display:flex;gap:8px;z-index:40;opacity:.35;transition:opacity .25s;}
+  #nav:hover{opacity:1;}
+  #nav button{
+    width:38px;height:38px;border-radius:11px;border:1px solid var(--line-2);cursor:pointer;
+    background:rgba(255,255,255,.06);color:var(--tx);font-size:16px;display:grid;place-items:center;
+    transition:background .2s,transform .2s;
+  }
+  #nav button:hover{background:rgba(255,255,255,.16);transform:translateY(-1px);}
+  #hint{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);font-size:13px;color:#5a6382;letter-spacing:.1em;}
+
+  /* 橫向長條對比 */
+  .bars{display:grid;gap:16px;margin-top:8px;}
+  .bar-row{display:grid;grid-template-columns:230px 1fr 92px;align-items:center;gap:20px;}
+  .bar-row .nm{font-size:18px;font-weight:600;}
+  .bar-track{height:16px;border-radius:9px;background:rgba(255,255,255,.07);overflow:hidden;}
+  .bar-fill{height:100%;border-radius:9px;}
+  .bar-row .vl{font-size:17px;font-weight:700;text-align:right;}
+
+  /* ================= 列印 / 匯出 PDF：一頁一張投影片 ================= */
+  @media print{
+    @page{ size:1280px 720px; margin:0; }
+    html,body{
+      overflow:visible;background:#0b1120;width:1280px;
+      -webkit-print-color-adjust:exact;print-color-adjust:exact;
+    }
+    #viewport{position:static;display:block;}
+    #stage{
+      transform:none !important;border-radius:0;box-shadow:none;
+      width:1280px;height:auto;overflow:visible;
+      background:linear-gradient(160deg,#0b1120 0%,#0a0e1b 55%,#0d0a14 100%);
+      counter-reset:pg;
+    }
+    #stage::before{display:none;}
+    .glow{display:none;}
+    .slide{
+      position:relative;inset:auto;display:flex;
+      width:1280px;height:720px;padding:74px 88px 84px;
+      opacity:1;visibility:visible;transform:none;
+      background:radial-gradient(900px 520px at 12% -10%,rgba(27,58,122,.55) 0%,transparent 62%),
+                 radial-gradient(760px 460px at 92% 112%,rgba(92,31,58,.5) 0%,transparent 58%),
+                 linear-gradient(160deg,#0b1120 0%,#0a0e1b 55%,#0d0a14 100%);
+      break-after:page;page-break-after:always;
+      counter-increment:pg;
+    }
+    .slide:last-of-type{break-after:auto;page-break-after:auto;}
+    .slide::after{
+      content:"Shopping Signal  ·  " counter(pg,decimal-leading-zero) " / 13";
+      position:absolute;left:88px;bottom:32px;
+      font-size:14px;color:#66718d;letter-spacing:.12em;
+    }
+    [data-anim]{opacity:1 !important;animation:none !important;}
+    .tl-now .dot-ring{display:none;}
+    #nav,#hint,#bar,.hud{display:none;}
+  }
+</style>
+</head>
+<body>
+<div id="viewport">
+  <div id="stage">
+    <div class="glow a"></div><div class="glow b"></div>
+    <div id="bar"></div>
+
+    <!-- ========== 1. 封面 ========== -->
+    <section class="slide active cover">
+      <div data-anim style="animation-delay:.02s"><span class="badge">蝦皮分潤 × AI 選品</span></div>
+      <h1 data-anim style="animation-delay:.10s;margin-top:26px;">Shopping<br><span class="grad">Signal</span></h1>
+      <p class="sub" data-anim style="animation-delay:.20s;">
+        不要告訴我什麼賣得最好。<br>
+        告訴我，<span class="hl">下一個可能會賣爆的是什麼</span>。
+      </p>
+      <div class="foot" data-anim style="animation-delay:.30s">
+        <span>市場資料 → 趨勢分析 → AI 選品</span>
+        <span>·</span>
+        <span>在商品爆起來之前，就先發現它</span>
+      </div>
+    </section>
+
+    <!-- ========== 2. 蝦皮分潤是什麼 ========== -->
+    <section class="slide">
+      <div class="kicker" data-anim style="animation-delay:.02s">01 / 什麼是蝦皮分潤</div>
+      <h2 data-anim style="animation-delay:.08s">概念其實很簡單：<span class="grad">分享，就能分潤</span></h2>
+      <div class="flow">
+        <div class="step" data-anim style="animation-delay:.16s">
+          <div class="n">STEP 1</div><div class="t">找到商品</div>
+          <div class="d">從蝦皮海量商品中，挑出你要推的東西。</div>
+        </div>
+        <div class="arrow" data-anim style="animation-delay:.22s">→</div>
+        <div class="step" data-anim style="animation-delay:.24s">
+          <div class="n">STEP 2</div><div class="t">分享商品</div>
+          <div class="d">透過社群、短影音、網站、部落格分享出去。</div>
+        </div>
+        <div class="arrow" data-anim style="animation-delay:.30s">→</div>
+        <div class="step" data-anim style="animation-delay:.32s">
+          <div class="n">STEP 3</div><div class="t">消費者購買</div>
+          <div class="d">消費者透過你的推廣連結完成訂單。</div>
+        </div>
+        <div class="arrow" data-anim style="animation-delay:.38s">→</div>
+        <div class="step pay" data-anim style="animation-delay:.40s">
+          <div class="n">STEP 4</div><div class="t o">獲得分潤</div>
+          <div class="d">符合條件的訂單，就能拿到佣金。</div>
+        </div>
+      </div>
+      <p data-anim style="animation-delay:.50s;margin-top:30px;font-size:19px;">
+        你不需要自己進貨、不需要囤貨，也不需要處理出貨與客服 —— 只要<span class="hl">把好商品分享給對的人</span>。
+      </p>
+    </section>
+
+    <!-- ========== 3. 你不用做的事 ========== -->
+    <section class="slide">
+      <div class="kicker" data-anim style="animation-delay:.02s">01 / 入場門檻</div>
+      <h2 data-anim style="animation-delay:.08s">這門生意，<span class="c">沒有倉庫問題</span></h2>
+      <div class="grid g4" style="margin-top:10px;">
+        <div class="card no" data-anim style="animation-delay:.14s"><span class="ico">📦</span><div class="t">不用進貨</div><p>沒有前期備貨資金壓力。</p></div>
+        <div class="card no" data-anim style="animation-delay:.20s"><span class="ico">🏬</span><div class="t">不用囤貨</div><p>不用租空間、不承擔庫存風險。</p></div>
+        <div class="card no" data-anim style="animation-delay:.26s"><span class="ico">🚚</span><div class="t">不用出貨</div><p>物流與包裝都是平台的事。</p></div>
+        <div class="card no" data-anim style="animation-delay:.32s"><span class="ico">💬</span><div class="t">不用客服</div><p>退換貨、售後不用你出面。</p></div>
+      </div>
+      <div class="colbox win" data-anim style="animation-delay:.40s;margin-top:26px;padding:24px 28px;">
+        <h3 style="margin-bottom:10px;">你真正要做的事</h3>
+        <p style="font-size:21px;color:#d8f6ea;">選對商品 ，然後把它變成<span class="hl">有人想看、想買的內容</span>。</p>
+      </div>
+    </section>
+
+    <!-- ========== 4. 真正的困難 ========== -->
+    <section class="slide">
+      <div class="kicker" data-anim style="animation-delay:.02s">02 / 真正的問題</div>
+      <h2 data-anim style="animation-delay:.08s">但真正困難的，<br>不是「分享連結」</h2>
+      <p class="lead" data-anim style="animation-delay:.18s;margin-top:16px;">
+        蝦皮上有<span class="hl">大量商品</span>，而且每天都在增加。
+      </p>
+      <div class="bignum" data-anim style="animation-delay:.28s">
+        <span class="n">數百 · 上千</span>
+        <span class="u">同樣都是藍牙耳機，就有這麼多選擇</span>
+      </div>
+      <div class="grid g3" style="margin-top:12px;">
+        <div class="card" data-anim style="animation-delay:.36s"><p>同樣的關鍵字，<br>每個人搜到的結果都不一樣。</p></div>
+        <div class="card" data-anim style="animation-delay:.42s"><p>銷量、價格、佣金、評價，<br>隨時都在變動。</p></div>
+        <div class="card" data-anim style="animation-delay:.48s"><p>你花在「挑選」的時間，<br>比做內容還多。</p></div>
+      </div>
+    </section>
+
+    <!-- ========== 5. 到底要推哪一個 ========== -->
+    <section class="slide">
+      <div class="kicker" data-anim style="animation-delay:.02s">02 / 真正的問題</div>
+      <h2 data-anim style="animation-delay:.08s">所以真正的問題是：<span class="grad">到底要推哪一個？</span></h2>
+      <p data-anim style="animation-delay:.16s;font-size:20px;margin-bottom:8px;">每一次選品，其實都在回答這幾個判斷題。</p>
+      <div class="grid g3">
+        <div class="card" data-anim style="animation-delay:.20s"><span class="ico">🔥</span><h3>哪些正在變熱門？</h3><p>最近的討論與搜尋熱度往哪走。</p></div>
+        <div class="card" data-anim style="animation-delay:.25s"><span class="ico">📈</span><h3>哪些銷量在快速成長？</h3><p>不是「賣很多」，而是「正在加速」。</p></div>
+        <div class="card" data-anim style="animation-delay:.30s"><span class="ico">🏷️</span><h3>哪些價格有競爭力？</h3><p>同類型商品中，值不值得被推薦。</p></div>
+        <div class="card" data-anim style="animation-delay:.35s"><span class="ico">💰</span><h3>哪些佣金值得推？</h3><p>分潤條件好不好，決定投入的價值。</p></div>
+        <div class="card" data-anim style="animation-delay:.40s"><span class="ico">⚔️</span><h3>哪些競爭還沒那麼激烈？</h3><p>有多少創作者已經在搶同一個品。</p></div>
+        <div class="card" data-anim style="animation-delay:.45s"><span class="ico">🔎</span><h3>現在大家在搜尋什麼？</h3><p>需求正在形成，還是已經飽和。</p></div>
+      </div>
+    </section>
+
+    <!-- ========== 6. 盲點 ========== -->
+    <section class="slide">
+      <div class="kicker" data-anim style="animation-delay:.02s">03 / 常見盲點</div>
+      <h2 data-anim style="animation-delay:.08s">挑「目前賣最多的商品」<br>等於<span class="o">直接走進紅海</span></h2>
+      <div class="vs" style="margin-top:6px;">
+        <div class="colbox" data-anim style="animation-delay:.18s">
+          <h3>跟著排行榜走</h3>
+          <div class="chain">
+            <span class="chip dim">已經很多人推</span>
+            <span class="chip dim">內容同質化</span>
+            <span class="chip dim">流量成本高</span>
+            <span class="chip dim">只能拚價格</span>
+          </div>
+          <p style="margin-top:18px;font-size:17px;">你看到它很熱的時候，競爭者早就都到了。</p>
+        </div>
+        <div class="arrow" data-anim style="animation-delay:.26s">→</div>
+        <div class="colbox win" data-anim style="animation-delay:.30s">
+          <h3>看趨勢找機會</h3>
+          <div class="chain">
+            <span class="chip ok">熱度剛起</span>
+            <span class="chip ok">供給還少</span>
+            <span class="chip ok">內容還沒人做</span>
+            <span class="chip ok">分潤條件好</span>
+          </div>
+          <p style="margin-top:18px;font-size:17px;">在別人還在觀望時，你已經先卡好位置。</p>
+        </div>
+      </div>
+      <p data-anim style="animation-delay:.40s;margin-top:26px;font-size:22px;color:#cdd6f0;">
+        真正有價值的是：<span class="g hl">在商品爆起來之前，就先發現它。</span>
+      </p>
+    </section>
+
+    <!-- ========== 7. 時間軸 ========== -->
+    <section class="slide">
+      <div class="kicker" data-anim style="animation-delay:.02s">03 / 時機</div>
+      <h2 data-anim style="animation-delay:.08s">爆紅之前，有一段<span class="g">沒人注意的黃金期</span></h2>
+      <div class="timeline" data-anim style="animation-delay:.16s">
+        <svg viewBox="0 0 1000 300" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:100%;height:300px;">
+          <defs>
+            <linearGradient id="curve" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#4cc9f0" stop-opacity=".25"/>
+              <stop offset="45%" stop-color="#3ddc97"/>
+              <stop offset="100%" stop-color="#ee4d2d"/>
+            </linearGradient>
+            <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#3ddc97" stop-opacity=".28"/>
+              <stop offset="100%" stop-color="#3ddc97" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <path d="M0,268 C160,262 250,240 380,214 C500,190 560,120 700,74 C810,38 900,22 1000,14 L1000,290 L0,290 Z" fill="url(#fill)"/>
+          <path d="M0,268 C160,262 250,240 380,214 C500,190 560,120 700,74 C810,38 900,22 1000,14"
+                fill="none" stroke="url(#curve)" stroke-width="4" stroke-linecap="round"/>
+        </svg>
+        <div class="tl-axis"></div>
+        <div class="tl-mark" style="left:14%;">
+          <div class="tl-dot" style="background:#4a5570;"></div>
+          <div class="lbl">沒人討論</div><div class="sub">需求還沒成形</div>
+        </div>
+        <div class="tl-mark tl-now" style="left:40%;">
+          <div class="dot-ring"></div>
+          <div class="tl-dot" style="background:var(--green);box-shadow:0 0 18px var(--green);"></div>
+          <div class="lbl">悄悄升溫 ← 你在這裡</div><div class="sub">熱度上升、競爭還低</div>
+        </div>
+        <div class="tl-mark" style="left:70%;">
+          <div class="tl-dot" style="background:var(--gold);"></div>
+          <div class="lbl">開始爆紅</div><div class="sub">內容紅利快速放大</div>
+        </div>
+        <div class="tl-mark" style="left:94%;">
+          <div class="tl-dot" style="background:var(--orange);"></div>
+          <div class="lbl">人人都在推</div><div class="sub">只剩價格競爭</div>
+        </div>
+      </div>
+      <p data-anim style="animation-delay:.30s;font-size:20px;">
+        選品的價值，不在於「現在多熱」，而在於<span class="hl">你在曲線的哪一段進場</span>。
+      </p>
+    </section>
+
+    <!-- ========== 8. Shopping Signal 是什麼 ========== -->
+    <section class="slide">
+      <div class="kicker" data-anim style="animation-delay:.02s">04 / 解法</div>
+      <h2 data-anim style="animation-delay:.08s">Shopping Signal：<br>讓 AI 幫你找出<span class="grad2">值得推的商品</span></h2>
+      <div class="grid g2" style="margin-top:10px;">
+        <div class="card" data-anim style="animation-delay:.18s">
+          <span class="ico">🔍</span><h3>它不只是搜尋蝦皮商品</h3>
+          <p>如果只是把商品列出來，你還是得自己做判斷。</p>
+        </div>
+        <div class="card" data-anim style="animation-delay:.24s">
+          <span class="ico">📡</span><h3>它把資料轉換成訊號</h3>
+          <p>把大量商品資料，變成<span class="hl">可以採取行動的訊號</span>。</p>
+        </div>
+      </div>
+      <div class="colbox win" data-anim style="animation-delay:.32s;margin-top:22px;padding:26px 30px;">
+        <div class="chain">
+          <span class="chip">商品資料</span><span class="chip">趨勢變化</span><span class="chip">銷量成長</span>
+          <span class="chip">價格定位</span><span class="chip">分潤條件</span><span class="chip">競爭密度</span>
+          <span class="chip hot">→ 可執行的選品建議</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 9. 訊號長什麼樣 ========== -->
+    <section class="slide">
+      <div class="kicker" data-anim style="animation-delay:.02s">04 / 訊號長什麼樣</div>
+      <h2 data-anim style="animation-delay:.08s;font-size:42px;">例如系統發現：<span class="hl">這個品近 7 天熱度快速上升</span></h2>
+      <div class="signal">
+        <div class="sig-left" data-anim style="animation-delay:.16s">
+          <div class="tag">TRENDING SIGNAL</div>
+          <div class="prod">折疊式隨身風扇</div>
+          <div class="meta">近 7 天熱度快速上升</div>
+          <div class="trend">
+            <span class="big">↑ 42%</span>
+            <span class="unit">7 日熱度成長<br>同類商品平均 +6%</span>
+          </div>
+          <svg class="spark" viewBox="0 0 320 70" preserveAspectRatio="none" style="width:100%;height:70px;margin-top:14px;">
+            <defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#ff7a45" stop-opacity=".3"/><stop offset="100%" stop-color="#ff7a45"/>
+            </linearGradient></defs>
+            <path d="M0,60 C40,58 60,50 90,44 C130,36 150,40 180,28 C215,14 250,16 320,4"
+                  fill="none" stroke="url(#sg)" stroke-width="3.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="sig-right">
+          <div class="sig-row" data-anim style="animation-delay:.24s"><span class="em">🔥</span><span class="k">Trending</span><span class="v up">↑ 42%</span></div>
+          <div class="sig-row" data-anim style="animation-delay:.29s"><span class="em">📈</span><span class="k">銷量持續成長</span><span class="v up">加速中</span></div>
+          <div class="sig-row" data-anim style="animation-delay:.34s"><span class="em">💰</span><span class="k">分潤條件良好</span><span class="v good">值得推</span></div>
+          <div class="sig-row" data-anim style="animation-delay:.39s"><span class="em">⚔️</span><span class="k">推廣競爭仍低</span><span class="v low">低</span></div>
+          <div class="sig-row" data-anim style="animation-delay:.44s"><span class="em">🎯</span><span class="k">適合短影音內容</span><span class="v fit">高契合</span></div>
+        </div>
+      </div>
+      <p data-anim style="animation-delay:.52s;margin-top:22px;font-size:20px;">
+        你看到的就不再只是一堆商品，而是 —— <span class="g hl">現在什麼值得推。</span>
+      </p>
+    </section>
+
+    <!-- ========== 10. 選品判斷可視化 ========== -->
+    <section class="slide">
+      <div class="kicker" data-anim style="animation-delay:.02s">04 / 為什麼是訊號</div>
+      <h2 data-anim style="animation-delay:.08s">把「靠感覺」的判斷，變成<span class="c">看得見的分數</span></h2>
+      <div class="bars">
+        <div class="bar-row" data-anim style="animation-delay:.16s">
+          <span class="nm">🔥 搜尋 / 討論熱度</span>
+          <span class="bar-track"><span class="bar-fill" style="width:42%;background:linear-gradient(90deg,#ff7a45,#ee4d2d);"></span></span>
+          <span class="vl o">上升中</span>
+        </div>
+        <div class="bar-row" data-anim style="animation-delay:.22s">
+          <span class="nm">📈 銷量成長動能</span>
+          <span class="bar-track"><span class="bar-fill" style="width:58%;background:linear-gradient(90deg,#7ee0ff,#4cc9f0);"></span></span>
+          <span class="vl c">強</span>
+        </div>
+        <div class="bar-row" data-anim style="animation-delay:.28s">
+          <span class="nm">💰 分潤吸引力</span>
+          <span class="bar-track"><span class="bar-fill" style="width:74%;background:linear-gradient(90deg,#8ff0c6,#3ddc97);"></span></span>
+          <span class="vl g">高</span>
+        </div>
+        <div class="bar-row" data-anim style="animation-delay:.34s">
+          <span class="nm">⚔️ 推廣競爭密度</span>
+          <span class="bar-track"><span class="bar-fill" style="width:22%;background:linear-gradient(90deg,#8b7bff,#5b4bd6);"></span></span>
+          <span class="vl" style="color:#b3a8ff;">低</span>
+        </div>
+        <div class="bar-row" data-anim style="animation-delay:.40s">
+          <span class="nm">🎯 內容契合度</span>
+          <span class="bar-track"><span class="bar-fill" style="width:81%;background:linear-gradient(90deg,#ffd98a,#ffc247);"></span></span>
+          <span class="vl" style="color:#ffd98a;">高</span>
+        </div>
+      </div>
+      <p data-anim style="animation-delay:.50s;margin-top:26px;font-size:20px;">
+        五個維度交叉檢查，才能回答「<span class="hl">現在什麼值得推</span>」，而不是「什麼已經很紅」。
+      </p>
+    </section>
+
+    <!-- ========== 11. 流程對比 ========== -->
+    <section class="slide">
+      <div class="kicker" data-anim style="animation-delay:.02s">05 / 從找商品到找機會</div>
+      <h2 data-anim style="animation-delay:.08s">同一件事，<span class="grad2">兩種做法</span></h2>
+      <div class="vs" style="margin-top:10px;">
+        <div class="colbox" data-anim style="animation-delay:.18s">
+          <h3>傳統做法</h3>
+          <div class="chain">
+            <span class="chip dim">逛蝦皮</span><span class="chip dim">找商品</span><span class="chip dim">看銷量</span>
+            <span class="chip dim">猜什麼會賣</span><span class="chip dim">做內容</span><span class="chip dim">放分潤連結</span>
+          </div>
+          <p style="margin-top:18px;font-size:17px;">每一步都靠直覺，錯了要等訂單才知道。</p>
+        </div>
+        <div class="arrow" data-anim style="animation-delay:.26s">→</div>
+        <div class="colbox win" data-anim style="animation-delay:.30s">
+          <h3>Shopping Signal</h3>
+          <div class="chain">
+            <span class="chip ok">市場資料</span><span class="chip ok">趨勢分析</span><span class="chip ok">AI 選品</span>
+            <span class="chip ok">發現機會</span><span class="chip ok">產生內容</span><span class="chip ok">分潤變現</span>
+          </div>
+          <p style="margin-top:18px;font-size:17px;">先有訊號，再決定投入 —— 選品變成有依據的決策。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 12. 核心概念 ========== -->
+    <section class="slide statement">
+      <div class="kicker" data-anim style="animation-delay:.02s">核心概念</div>
+      <div class="q" data-anim style="animation-delay:.12s">
+        <span class="keep">不要告訴我什麼賣得最好。</span>
+        告訴我，<span class="grad">下一個可能會賣爆的是什麼。</span>
+      </div>
+      <div class="rule" data-anim style="animation-delay:.30s"></div>
+      <p data-anim style="animation-delay:.38s;margin-top:28px;font-size:21px;">
+        讓選品不再只靠感覺，而是透過市場訊號，找到<span class="hl">正在上升、值得推、而且有機會賺錢</span>的商品。
+      </p>
+    </section>
+
+    <!-- ========== 13. 收尾 ========== -->
+    <section class="slide">
+      <div class="kicker" data-anim style="animation-delay:.02s">Shopping Signal</div>
+      <h2 data-anim style="animation-delay:.08s;font-size:56px;">從「找商品」<br>變成「<span class="grad">找機會</span>」</h2>
+      <div class="grid g3" style="margin-top:22px;">
+        <div class="card" data-anim style="animation-delay:.18s"><span class="ico">📡</span><h3>看懂訊號</h3><p>熱度、銷量、佣金、競爭、內容契合度。</p></div>
+        <div class="card" data-anim style="animation-delay:.24s"><span class="ico">⚡</span><h3>提早進場</h3><p>在商品爆紅之前，就先卡好內容位置。</p></div>
+        <div class="card" data-anim style="animation-delay:.30s"><span class="ico">💸</span><h3>穩定變現</h3><p>把選品判斷，變成可重複的分潤流程。</p></div>
+      </div>
+      <div data-anim style="animation-delay:.42s;margin-top:38px;display:flex;align-items:center;gap:22px;">
+        <span class="badge" style="font-size:16px;padding:12px 22px;">現在什麼值得推？</span>
+        <span style="color:var(--tx-3);font-size:19px;">讓市場資料回答，而不是靠運氣。</span>
+      </div>
+    </section>
+
+    <div class="hud">
+      <div class="brand"><span class="dot"></span><span>Shopping Signal</span></div>
+      <div id="counter">01 / 13</div>
+    </div>
+
+    <div id="nav">
+      <button id="prev" title="上一頁 ←">‹</button>
+      <button id="next" title="下一頁 → / 空白鍵">›</button>
+      <button id="full" title="全螢幕 F">⛶</button>
+    </div>
+  </div>
+</div>
+<div id="hint">← → 或空白鍵翻頁 · F 全螢幕 · P 列印 / 匯出 PDF</div>
+
+<script>
+(function(){
+  const stage   = document.getElementById('stage');
+  const slides  = Array.from(document.querySelectorAll('.slide'));
+  const counter = document.getElementById('counter');
+  const bar     = document.getElementById('bar');
+  let i = 0;
+
+  /* ---- 縮放舞台：維持 16:9，塞滿視窗 ---- */
+  function fit(){
+    const pad = 24;
+    const s = Math.min((innerWidth - pad*2)/1280, (innerHeight - pad*2)/720);
+    stage.style.transform = 'scale(' + s + ')';
+  }
+  addEventListener('resize', fit);
+  fit();
+
+  /* ---- 頁碼 & 進度條 ---- */
+  function pad2(n){ return n < 10 ? '0' + n : '' + n; }
+  function render(){
+    slides.forEach((s, k) => s.classList.toggle('active', k === i));
+    // 重播進場動畫
+    slides[i].querySelectorAll('[data-anim]').forEach(el => {
+      const d = el.style.animationDelay;
+      el.style.animation = 'none';
+      void el.offsetWidth;
+      el.style.animation = '';
+      el.style.animationDelay = d;
+    });
+    counter.textContent = pad2(i+1) + ' / ' + pad2(slides.length);
+    bar.style.width = ((i)/(slides.length-1)*100) + '%';
+  }
+  function go(n){
+    const t = Math.max(0, Math.min(slides.length-1, n));
+    if (t === i) return;
+    i = t; render();
+    try { history.replaceState(null, '', '#' + (i+1)); } catch(_){}
+  }
+  const next = () => go(i+1), prev = () => go(i-1);
+
+  /* ---- 鍵盤 ---- */
+  addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ' || e.key === 'PageDown' || e.key === 'Enter'){ e.preventDefault(); next(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp' || e.key === 'Backspace'){ e.preventDefault(); prev(); }
+    else if (e.key === 'Home'){ go(0); }
+    else if (e.key === 'End'){ go(slides.length-1); }
+    else if (e.key === 'f' || e.key === 'F'){ toggleFull(); }
+    else if (e.key === 'p' || e.key === 'P'){ print(); }
+    else if (/^[0-9]$/.test(e.key)){ go(parseInt(e.key,10) - 1); }
+  });
+
+  /* ---- 滑鼠 / 觸控 ---- */
+  document.getElementById('next').onclick = next;
+  document.getElementById('prev').onclick = prev;
+  function toggleFull(){
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
+  }
+  document.getElementById('full').onclick = toggleFull;
+
+  let x0 = null;
+  addEventListener('touchstart', e => x0 = e.touches[0].clientX, {passive:true});
+  addEventListener('touchend', e => {
+    if (x0 === null) return;
+    const dx = e.changedTouches[0].clientX - x0;
+    if (Math.abs(dx) > 50) (dx < 0 ? next : prev)();
+    x0 = null;
+  }, {passive:true});
+
+  /* ---- 網址帶 #5 可直接跳到第 5 頁 ---- */
+  const h = parseInt((location.hash || '').replace('#',''), 10);
+  if (h >= 1 && h <= slides.length) i = h - 1;
+  render();
+})();
+</script>
+</body>
+</html>
