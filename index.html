@@ -251,14 +251,14 @@
 
   /* ================= 卡片模式（手機／相容性最強） =================
      完全不用 transform / position:fixed 縮放 / vh：
-     每一頁就是一張固定 1280×720 的卡片，用 zoom 縮到螢幕寬，垂直捲動瀏覽。
-     zoom 對 Chromium（Android WebView、Chrome）與 Safari 都支援，
-     是行動瀏覽器最不容易畫不出來的做法。 */
-  .card,  .card body{overflow:auto;}
-  .card #viewport{position:static;display:grid;place-items:start center;}
+     每一頁就是一張 1280×720 的卡片，用 zoom 縮到螢幕寬，垂直捲動瀏覽。
+     zoom 對 Chromium（Android WebView、Chrome）與 Safari 都支援。 */
+  .card, .card body{overflow-x:hidden;overflow-y:auto;height:auto;}
+  .card #viewport{position:static;display:block;padding:0;}
   .card #stage{
     --s:1 !important;transform:none !important;
-    width:1280px;height:auto;overflow:visible;border-radius:0;box-shadow:none;margin:0 auto;
+    width:auto;max-width:100%;height:auto;overflow:visible;
+    border-radius:0;box-shadow:none;margin:0;
   }
   .card .slide{
     position:relative;inset:auto;display:flex;
@@ -267,41 +267,32 @@
     border-bottom:1px solid rgba(255,255,255,.14);
   }
   .card [data-anim]{opacity:1 !important;transform:none !important;transition:none !important;}
-  .card .slide.active{outline:0;}
-  .card .glow{display:none;}
-  .card #stage::before{display:none;}
-  .card #bar{display:none;}
-  .card .hud{position:static;display:flex;left:auto;right:auto;width:1280px;margin:0 auto;
-    padding:10px 88px;box-sizing:border-box;background:#0a0e1b;}
+  .card .glow,.card #stage::before,.card #bar,.card #rotate,.card #hint{display:none !important;}
+  /* 頁尾統計條在卡片模式不需要（它原本是 1280px 寬，會造成橫向溢出） */
+  .card .hud{display:none;}
   .card #nav{position:fixed;right:12px;bottom:12px;}
-  .card #hint{display:block;position:fixed;left:auto;right:auto;bottom:10px;transform:none;
-    background:rgba(10,14,27,.8);border-radius:8px;}
-  .card #rotate{display:none !important;}
 
-  /* 用 zoom 縮放卡片（會影響版面高度，所以捲動長度自然正確） */
-  .card .slide{zoom:.30;}
-  @media (min-width:520px){ .card .slide{zoom:.39;} }
-  @media (min-width:700px){ .card .slide{zoom:.53;} }
-  @media (min-width:900px){ .card .slide{zoom:.68;} }
-  @media (min-width:1100px){ .card .slide{zoom:.84;} }
+  /* zoom 階梯：卡片實際寬度 = 1280 × zoom，盡量貼齊但不超出螢幕寬 */
+  .card .slide{zoom:.25;}
+  @media (min-width:345px){ .card .slide{zoom:.27;} }
+  @media (min-width:385px){ .card .slide{zoom:.30;} }
+  @media (min-width:425px){ .card .slide{zoom:.33;} }
+  @media (min-width:481px){ .card .slide{zoom:.37;} }
+  @media (min-width:561px){ .card .slide{zoom:.43;} }
+  @media (min-width:641px){ .card .slide{zoom:.49;} }
+  @media (min-width:721px){ .card .slide{zoom:.55;} }
+  @media (min-width:801px){ .card .slide{zoom:.62;} }
+  @media (min-width:901px){ .card .slide{zoom:.70;} }
+  @media (min-width:1025px){ .card .slide{zoom:.80;} }
+  @media (min-width:1281px){ .card .slide{zoom:1;} }
 
-  /* 沒有 JS 時，直向手機也直接走卡片模式（純 CSS，不靠任何測量） */
-  @media (orientation:portrait) and (max-width:900px){
-    body{overflow:auto;}
-    #viewport{position:static;display:grid;place-items:start center;}
-    #stage{--s:1 !important;transform:none !important;width:1280px;height:auto;overflow:visible;border-radius:0;box-shadow:none;margin:0 auto;}
-    .slide{position:relative;inset:auto;width:1280px;height:720px;margin:0 auto;
-      opacity:1 !important;visibility:visible !important;transform:none !important;
-      border-bottom:1px solid rgba(255,255,255,.14);}
-    [data-anim]{opacity:1 !important;transform:none !important;}
-    .glow,#stage::before,#bar,#rotate{display:none;}
-    .slide{zoom:.30;}
-    .hud{position:static;width:1280px;margin:0 auto;padding:10px 88px;box-sizing:border-box;background:#0a0e1b;}
+  /* 沒有 zoom 的瀏覽器：用 transform 縮放，並用負邊距補回版面高度 */
+  @supports not (zoom:1){
+    .card .slide{transform:scale(.30) !important;transform-origin:top left;margin-bottom:-504px;}
+    @media (min-width:481px){ .card .slide{transform:scale(.37) !important;margin-bottom:-454px;} }
+    @media (min-width:641px){ .card .slide{transform:scale(.49) !important;margin-bottom:-367px;} }
+    @media (min-width:901px){ .card .slide{transform:scale(.70) !important;margin-bottom:-216px;} }
   }
-  @media (orientation:portrait) and (max-width:520px){ .slide{zoom:.30;} }
-  @media (orientation:portrait) and (min-width:520px){ .slide{zoom:.39;} }
-  @media (orientation:portrait) and (min-width:700px){ .slide{zoom:.53;} }
-  @media (orientation:portrait) and (min-width:900px){ .slide{zoom:.68;} }
 
   /* 版本標記：一定要看得到，用來判斷手機載到的是哪一版 */
   #ver{
@@ -751,7 +742,7 @@
   /* ---- 診斷面板：手機上萬一還是怪怪的，這段文字會直接說明原因 ---- */
   const diagEl = document.getElementById('diag');
   const verState = document.getElementById('verstate');
-  const VERSION = 'v6';
+  const VERSION = 'v7';
   let diagReason = '';
   /* matchMedia 不存在的舊 webview 也不能讓程式掛掉 */
   function mq(q){
