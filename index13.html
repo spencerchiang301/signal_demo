@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0a0e1b">
+<title>實作工具與安裝方式 — Shopping Signal</title>
+<meta name="description" content="Shopping Signal — 用市場訊號找出下一個可能會賣爆的商品。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0e1b'/%3E%3Cpath d='M12 42 L26 30 L38 36 L52 18' fill='none' stroke='%23ee4d2d' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="wrap">
+<div class="kicker">06 / 實作工具</div>
+  <h2>內容製作會用到的兩支工具</h2>
+  <div class="grid g2">
+    <div class="box hot">
+      <span class="ico">🎬</span><h3>即夢 AI</h3>
+      <p>把商品賣點做成<b>短影音</b>素材 —— 不用自己拍、不用自己剪。</p>
+      <div class="chips" style="margin-top:12px">
+        <span class="chip hot">短影音</span><span class="chip">AI 生成</span><span class="chip">中國區 App</span>
+      </div>
+    </div>
+    <div class="box hot">
+      <span class="ico">✂️</span><h3>開拍</h3>
+      <p>素材<b>去水印</b> —— 畫面乾淨了，才能安心二次剪輯與發佈。</p>
+      <div class="chips" style="margin-top:12px">
+        <span class="chip hot">去水印</span><span class="chip">口播 / 剪輯</span><span class="chip">中國區 App</span>
+      </div>
+    </div>
+  </div>
+  <div class="note">
+    兩支都是中國區 App，台灣要繞一下：<b>Android 先裝「應用寶」</b>，<b>iPhone 用「愛思助手」</b>。
+  </div>
+
+  <div class="grid g2">
+    <div class="box">
+      <h3>🤖 Android 安裝方式</h3>
+      <ol class="steps-list">
+        <li>先取得 <b>應用寶</b>（騰訊的 App 商店）：手機瀏覽器搜「應用寶 官網」下載，或到 APKPure 之類的站抓 APK。</li>
+        <li>安裝時系統會問「允許安裝未知的應用程式」→ 選擇允許。</li>
+        <li>打開<b>應用寶</b>，搜尋「<b>即夢</b>」「<b>開拍</b>」→ 安裝。</li>
+        <li>若搜不到，把應用寶的帳號／地區切到中國，或直接用即夢網頁版 <b>jimeng.jianying.com</b>。</li>
+        <li>補充：<b>開拍</b>在 Google Play 也上架了，可以先試著直接安裝，省掉應用寶這一步。</li>
+      </ol>
+    </div>
+    <div class="box">
+      <h3>🍎 iPhone 安裝方式</h3>
+      <ol class="steps-list">
+        <li>在電腦（Windows 或 Mac）安裝 <b>愛思助手</b>（i4Tools）。</li>
+        <li>用傳輸線接上 iPhone，手機跳出提示時按「<b>信任這部電腦</b>」。</li>
+        <li>在愛思助手的「應用」或「<b>IPA 簽名</b>」功能裡，把 <b>即夢</b>、<b>開拍</b> 裝進手機。</li>
+        <li>首次開啟若被系統擋下：到 iPhone「<b>設定 → 一般 → VPN 與裝置管理</b>」→ 信任該描述檔。</li>
+        <li>提醒：非 App Store 安裝的 App 靠簽名憑證，<b>憑證過期或被撤銷時要重新簽名安裝</b>；急用時先用即夢網頁版。</li>
+      </ol>
+    </div>
+  </div>
+  <p class="small">※ 去水印請只用在自己拍攝的素材，或已取得授權的內容。</p>
+  </main>
+
+  <nav class="nav">
+    <a class="btn prev" href="index12.html">← 上一頁</a>
+    <span class="pageno">14 / 14</span>
+    <a class="btn next" href="index.html">回到第一頁 ↺</a>
+  </nav>
+
+  <script>
+  /* 只是加分功能：左右方向鍵與左右滑動也能翻頁；沒有 JS 也能用按鈕翻 */
+  (function(){
+    try{
+      var prev = 'index12.html', next = 'index.html';
+      document.addEventListener('keydown', function(e){
+        if ((e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') && next) location.href = next;
+        if ((e.key === 'ArrowLeft' || e.key === 'PageUp') && prev) location.href = prev;
+      });
+      var x0 = null;
+      document.addEventListener('touchstart', function(e){ x0 = e.touches[0].clientX; }, {passive:true});
+      document.addEventListener('touchend', function(e){
+        if (x0 === null) return;
+        var dx = e.changedTouches[0].clientX - x0; x0 = null;
+        if (Math.abs(dx) < 60) return;
+        if (dx < 0 && next) location.href = next;
+        if (dx > 0 && prev) location.href = prev;
+      }, {passive:true});
+    }catch(_){}
+  })();
+  </script>
+</body>
+</html>
