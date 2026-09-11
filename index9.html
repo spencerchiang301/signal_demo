@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0a0e1b">
+<title>看得見的分數 — Shopping Signal</title>
+<meta name="description" content="Shopping Signal — 用市場訊號找出下一個可能會賣爆的商品。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0e1b'/%3E%3Cpath d='M12 42 L26 30 L38 36 L52 18' fill='none' stroke='%23ee4d2d' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="wrap">
+<div class="kicker">04 / 為什麼是訊號</div>
+  <h2>把「靠感覺」的判斷，變成<span class="c">看得見的分數</span></h2>
+  <div class="bars">
+    <div class="bar"><span class="nm">🔥 搜尋 / 討論熱度</span><span class="vl o">上升中</span>
+      <span class="track"><span class="fill" style="width:42%;background:linear-gradient(90deg,#ff7a45,#ee4d2d)"></span></span></div>
+    <div class="bar"><span class="nm">📈 銷量成長動能</span><span class="vl c">強</span>
+      <span class="track"><span class="fill" style="width:58%;background:linear-gradient(90deg,#7ee0ff,#4cc9f0)"></span></span></div>
+    <div class="bar"><span class="nm">💰 分潤吸引力</span><span class="vl g">高</span>
+      <span class="track"><span class="fill" style="width:74%;background:linear-gradient(90deg,#8ff0c6,#3ddc97)"></span></span></div>
+    <div class="bar"><span class="nm">⚔️ 推廣競爭密度</span><span class="vl v">低</span>
+      <span class="track"><span class="fill" style="width:22%;background:linear-gradient(90deg,#8b7bff,#5b4bd6)"></span></span></div>
+    <div class="bar"><span class="nm">🎯 內容契合度</span><span class="vl" style="color:#ffd98a">高</span>
+      <span class="track"><span class="fill" style="width:81%;background:linear-gradient(90deg,#ffd98a,#ffc247)"></span></span></div>
+  </div>
+  <p>五個維度交叉檢查，才能回答「<b>現在什麼值得推</b>」，而不是「什麼已經很紅」。</p>
+  </main>
+
+  <nav class="nav">
+    <a class="btn prev" href="index8.html">← 上一頁</a>
+    <span class="pageno">10 / 13</span>
+    <a class="btn next" href="index10.html">下一頁 →</a>
+  </nav>
+
+  <script>
+  /* 只是加分功能：左右方向鍵與左右滑動也能翻頁；沒有 JS 也能用按鈕翻 */
+  (function(){
+    try{
+      var prev = 'index8.html', next = 'index10.html';
+      document.addEventListener('keydown', function(e){
+        if ((e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') && next) location.href = next;
+        if ((e.key === 'ArrowLeft' || e.key === 'PageUp') && prev) location.href = prev;
+      });
+      var x0 = null;
+      document.addEventListener('touchstart', function(e){ x0 = e.touches[0].clientX; }, {passive:true});
+      document.addEventListener('touchend', function(e){
+        if (x0 === null) return;
+        var dx = e.changedTouches[0].clientX - x0; x0 = null;
+        if (Math.abs(dx) < 60) return;
+        if (dx < 0 && next) location.href = next;
+        if (dx > 0 && prev) location.href = prev;
+      }, {passive:true});
+    }catch(_){}
+  })();
+  </script>
+</body>
+</html>

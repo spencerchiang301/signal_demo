@@ -4,30 +4,47 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#0a0e1b">
-<title>Shopping Signal — 首頁 — Shopping Signal</title>
+<title>爆紅之前的黃金期 — Shopping Signal</title>
 <meta name="description" content="Shopping Signal — 用市場訊號找出下一個可能會賣爆的商品。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0e1b'/%3E%3Cpath d='M12 42 L26 30 L38 36 L52 18' fill='none' stroke='%23ee4d2d' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main class="wrap">
-<span class="badge" style="margin-bottom:6px">蝦皮分潤 × AI 選品</span>
-  <h1>Shopping <span class="grad">Signal</span></h1>
-  <p class="lead">不要告訴我什麼賣得最好。<br>告訴我，<b>下一個可能會賣爆的是什麼</b>。</p>
-  <p class="small">市場資料 → 趨勢分析 → AI 選品　·　在商品爆起來之前，就先發現它</p>
+<div class="kicker">03 / 時機</div>
+  <h2>爆紅之前，有一段<span class="g">沒人注意的黃金期</span></h2>
+  <div class="stages">
+    <div class="stage">
+      <b>沒人討論</b><p>需求還沒成形</p>
+      <div class="heat"><i style="width:12%;background:#4a5570"></i></div>
+    </div>
+    <div class="stage now">
+      <b class="g">悄悄升溫 ← 你在這裡</b><p>熱度上升、競爭還低</p>
+      <div class="heat"><i style="width:34%;background:linear-gradient(90deg,#3ddc97,#8ff0c6)"></i></div>
+    </div>
+    <div class="stage">
+      <b style="color:var(--gold)">開始爆紅</b><p>內容紅利快速放大</p>
+      <div class="heat"><i style="width:68%;background:linear-gradient(90deg,#ffc247,#ffd98a)"></i></div>
+    </div>
+    <div class="stage">
+      <b class="o">人人都在推</b><p>只剩價格競爭</p>
+      <div class="heat"><i style="width:96%;background:linear-gradient(90deg,#ee4d2d,#ff7a45)"></i></div>
+    </div>
+  </div>
+  <p>選品的價值，不在於「現在多熱」，而在於<b>你在曲線的哪一段進場</b>。</p>
   </main>
 
   <nav class="nav">
-    <span class="btn prev off">← 上一頁</span>
-    <span class="pageno">1 / 13</span>
-    <a class="btn next" href="index1.html">下一頁 →</a>
+    <a class="btn prev" href="index5.html">← 上一頁</a>
+    <span class="pageno">7 / 13</span>
+    <a class="btn next" href="index7.html">下一頁 →</a>
   </nav>
 
   <script>
   /* 只是加分功能：左右方向鍵與左右滑動也能翻頁；沒有 JS 也能用按鈕翻 */
   (function(){
     try{
-      var prev = null, next = 'index1.html';
+      var prev = 'index5.html', next = 'index7.html';
       document.addEventListener('keydown', function(e){
         if ((e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') && next) location.href = next;
         if ((e.key === 'ArrowLeft' || e.key === 'PageUp') && prev) location.href = prev;
